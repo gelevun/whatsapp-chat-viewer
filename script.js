@@ -70,8 +70,8 @@ function handleFileUpload(event) {
         if (file.name === '_chat.txt' || file.name.endsWith('.txt')) {
             chatFile = file;
             console.log('Found chat file:', file.name);
-        } else if (file.type.startsWith('image/') || file.type.startsWith('video/') || 
-                   file.name.match(/\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar|vcf)$/i)) {
+        } else if (file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/') || 
+                   file.name.match(/\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar|vcf|opus|mp3|wav|m4a|ogg|aac)$/i)) {
             imageFiles.push(file);
             console.log('Found media file:', file.name);
         } else {
@@ -218,6 +218,18 @@ function getMessageType(content) {
         return 'document';
     } else if (content.includes('<') && content.includes('.vcf eklendi>')) {
         return 'contact';
+    } else if (content.includes('<') && content.includes('.opus eklendi>')) {
+        return 'audio';
+    } else if (content.includes('<') && content.includes('.mp3 eklendi>')) {
+        return 'audio';
+    } else if (content.includes('<') && content.includes('.wav eklendi>')) {
+        return 'audio';
+    } else if (content.includes('<') && content.includes('.m4a eklendi>')) {
+        return 'audio';
+    } else if (content.includes('<') && content.includes('.ogg eklendi>')) {
+        return 'audio';
+    } else if (content.includes('<') && content.includes('.aac eklendi>')) {
+        return 'audio';
     } else if (content.includes('Konum: https://maps.google.com')) {
         return 'location';
     } else if (content.includes('Cevapsız görüntülü arama')) {
@@ -329,6 +341,24 @@ function createMessageElement(message) {
             `;
             break;
             
+        case 'audio':
+            const audioPath = getMediaPath(message.content);
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="media-message audio">
+                        <i class="fas fa-microphone"></i>
+                        <span>Ses mesajı</span>
+                        <div class="file-name">${audioPath}</div>
+                        <audio controls style="width: 100%; margin-top: 8px;">
+                            <source src="${audioPath}" type="audio/${getAudioType(audioPath)}">
+                            Tarayıcınız ses dosyasını desteklemiyor.
+                        </audio>
+                    </div>
+                </div>
+                <div class="message-time">${timeString}</div>
+            `;
+            break;
+            
         case 'location':
             const locationUrl = extractLocationUrl(message.content);
             messageDiv.innerHTML = `
@@ -396,10 +426,10 @@ function processImageFiles(imageFiles) {
 
 // Get media path from content
 function getMediaPath(content) {
-    const match = content.match(/<(.+\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar|vcf))\s+eklendi>/i);
+    const match = content.match(/<(.+\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar|vcf|opus|mp3|wav|m4a|ogg|aac))\s+eklendi>/i);
     if (match) {
         const fileName = match[1];
-        console.log('Looking for image:', fileName);
+        console.log('Looking for media:', fileName);
         
         // Check if we have a virtual URL for this file
         if (window.virtualImages && window.virtualImages[fileName]) {
@@ -408,10 +438,24 @@ function getMediaPath(content) {
         }
         
         console.log('No virtual URL found for:', fileName);
-        console.log('Available images:', window.virtualImages ? Object.keys(window.virtualImages) : 'None');
+        console.log('Available media:', window.virtualImages ? Object.keys(window.virtualImages) : 'None');
         return fileName; // Fallback to direct file path
     }
     return '';
+}
+
+// Get audio type from file extension
+function getAudioType(fileName) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    const audioTypes = {
+        'opus': 'opus',
+        'mp3': 'mpeg',
+        'wav': 'wav',
+        'm4a': 'mp4',
+        'ogg': 'ogg',
+        'aac': 'aac'
+    };
+    return audioTypes[extension] || 'mpeg';
 }
 
 // Extract location URL
