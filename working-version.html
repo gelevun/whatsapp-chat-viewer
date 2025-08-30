@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Chat Viewer - Çalışan Versiyon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: #25d366;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .chat-area {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            margin: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+        }
+        
+        .message.sent {
+            background: #dcf8c6;
+            margin-left: auto;
+        }
+        
+        .message.received {
+            background: white;
+            border: 1px solid #ddd;
+        }
+        
+        .upload-area {
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+        }
+        
+        .upload-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .upload-btn:hover {
+            background: #128c7e;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .status {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WhatsApp Chat Viewer</h1>
+            <p>Çalışan Basit Versiyon</p>
+        </div>
+        
+        <div class="chat-area" id="chatArea">
+            <div style="text-align: center; color: #666; margin-top: 50px;">
+                <p>Henüz mesaj yok.</p>
+                <p>Dosya yükleyin başlamak için.</p>
+            </div>
+        </div>
+        
+        <div class="upload-area">
+            <input type="file" id="fileInput" class="file-input" accept=".txt" multiple>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                📁 Dosya Yükle
+            </button>
+            <div class="status" id="status">_chat.txt dosyasını seçin</div>
+        </div>
+    </div>
+    
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const chatArea = document.getElementById('chatArea');
+        const status = document.getElementById('status');
+        
+        fileInput.addEventListener('change', handleFileUpload);
+        
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            
+            if (files.length === 0) return;
+            
+            status.textContent = 'Dosyalar işleniyor...';
+            
+            let chatFile = null;
+            
+            // Chat dosyasını bul
+            for (let file of files) {
+                if (file.name === '_chat.txt' || file.name.endsWith('.txt')) {
+                    chatFile = file;
+                    break;
+                }
+            }
+            
+            if (!chatFile) {
+                status.textContent = 'Chat dosyası bulunamadı!';
+                return;
+            }
+            
+            // Dosyayı oku
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseAndDisplayChat(text);
+                status.textContent = 'Chat yüklendi!';
+            };
+            
+            reader.onerror = function() {
+                status.textContent = 'Dosya okuma hatası!';
+            };
+            
+            reader.readAsText(chatFile);
+        }
+        
+        function parseAndDisplayChat(text) {
+            const lines = text.split('\n');
+            const messages = [];
+            
+            let currentMessage = null;
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                // Mesaj başlangıcını kontrol et
+                const match = line.match(/^\[(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2})\]\s+(.+?):\s*(.*)/);
+                
+                if (match) {
+                    // Önceki mesajı kaydet
+                    if (currentMessage) {
+                        messages.push(currentMessage);
+                    }
+                    
+                    // Yeni mesaj başlat
+                    const [, timestamp, sender, content] = match;
+                    currentMessage = {
+                        timestamp: timestamp,
+                        sender: sender.trim(),
+                        content: content.trim()
+                    };
+                } else if (currentMessage) {
+                    // Mesajın devamı
+                    currentMessage.content += '\n' + line;
+                }
+            }
+            
+            // Son mesajı ekle
+            if (currentMessage) {
+                messages.push(currentMessage);
+            }
+            
+            displayMessages(messages);
+        }
+        
+        function displayMessages(messages) {
+            chatArea.innerHTML = '';
+            
+            if (messages.length === 0) {
+                chatArea.innerHTML = '<div style="text-align: center; color: #666;">Mesaj bulunamadı</div>';
+                return;
+            }
+            
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message received';
+                messageDiv.innerHTML = `
+                    <div style="font-weight: bold; color: #25d366;">${message.sender}</div>
+                    <div style="margin-top: 5px;">${message.content.replace(/\n/g, '<br>')}</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;">${message.timestamp}</div>
+                `;
+                chatArea.appendChild(messageDiv);
+            });
+            
+            // En alta kaydır
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        // Sayfa yüklendiğinde varsayılan chat'i yüklemeyi dene
+        window.addEventListener('load', function() {
+            fetch('_chat.txt')
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error('Chat dosyası bulunamadı');
+                })
+                .then(text => {
+                    parseAndDisplayChat(text);
+                    status.textContent = 'Varsayılan chat yüklendi!';
+                })
+                .catch(error => {
+                    console.log('Varsayılan chat yüklenemedi:', error.message);
+                });
+        });
+    </script>
+</body>
+</html>
