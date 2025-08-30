@@ -194,7 +194,7 @@ function parseTimestamp(timestamp) {
     return new Date(yearNum, monthNum, dayNum, hourNum, minuteNum, secondNum);
 }
 
-// Determine message type with enhanced detection
+// Determine message type
 function getMessageType(content) {
     if (content.includes('<') && content.includes('.jpg eklendi>')) {
         return 'image';
@@ -218,66 +218,12 @@ function getMessageType(content) {
         return 'missed_call';
     } else if (content.includes('https://')) {
         return 'link';
-    } else if (isIBAN(content)) {
-        return 'iban';
-    } else if (isTCKimlikNo(content)) {
-        return 'tc';
-    } else if (isBankInfo(content)) {
-        return 'bank';
-    } else if (isPhoneNumber(content)) {
-        return 'phone';
-    } else if (isEmail(content)) {
-        return 'email';
-    } else if (isWebsite(content)) {
-        return 'website';
     } else {
         return 'text';
     }
 }
 
-// Check if content contains IBAN
-function isIBAN(content) {
-    // Turkish IBAN pattern: TR + 2 digits + 4 letters + 16 digits
-    const ibanPattern = /TR\d{2}\s*\d{4}\s*\d{4}\s*\d{4}\s*\d{4}\s*\d{2}/i;
-    return ibanPattern.test(content);
-}
 
-// Check if content contains TC Kimlik No
-function isTCKimlikNo(content) {
-    // TC Kimlik No: 11 digits
-    const tcPattern = /\b\d{11}\b/;
-    return tcPattern.test(content);
-}
-
-// Check if content contains bank information
-function isBankInfo(content) {
-    const bankKeywords = ['garanti', 'iş bankası', 'akbank', 'yapı kredi', 'ziraat', 'vakıfbank', 'halkbank', 'denizbank', 'qnb', 'ing', 'hsbc', 'banka', 'bankası'];
-    return bankKeywords.some(keyword => content.toLowerCase().includes(keyword));
-}
-
-// Check if content contains phone number
-function isPhoneNumber(content) {
-    // Turkish phone number patterns
-    const phonePatterns = [
-        /\b\d{3}\s*\d{3}\s*\d{2}\s*\d{2}\b/, // 5XX XXX XX XX
-        /\b\d{3}\s*\d{3}\s*\d{4}\b/, // 5XX XXX XXXX
-        /\+90\s*\d{3}\s*\d{3}\s*\d{2}\s*\d{2}/, // +90 5XX XXX XX XX
-        /\b0\d{3}\s*\d{3}\s*\d{2}\s*\d{2}\b/ // 05XX XXX XX XX
-    ];
-    return phonePatterns.some(pattern => pattern.test(content));
-}
-
-// Check if content contains email
-function isEmail(content) {
-    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
-    return emailPattern.test(content);
-}
-
-// Check if content contains website
-function isWebsite(content) {
-    const websitePattern = /\b(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+(?:\/[^\s]*)?\b/;
-    return websitePattern.test(content) && !content.includes('maps.google.com');
-}
 
 // Display messages
 function displayMessages() {
@@ -372,89 +318,7 @@ function createMessageElement(message) {
             `;
             break;
             
-        case 'iban':
-            const iban = extractIBAN(message.content);
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="special-message iban">
-                        <div class="special-label">IBAN</div>
-                        <div class="special-value">${iban}</div>
-                    </div>
-                    ${message.content !== iban ? `<div style="margin-top: 8px;">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                <div class="message-time">${timeString}</div>
-            `;
-            break;
-            
-        case 'tc':
-            const tcNo = extractTCKimlikNo(message.content);
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="special-message tc">
-                        <div class="special-label">TC Kimlik No</div>
-                        <div class="special-value">${tcNo}</div>
-                    </div>
-                    ${message.content !== tcNo ? `<div style="margin-top: 8px;">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                <div class="message-time">${timeString}</div>
-            `;
-            break;
-            
-        case 'bank':
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="special-message bank">
-                        <div class="special-label">Banka Bilgisi</div>
-                        <div class="special-value">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>
-                    </div>
-                </div>
-                <div class="message-time">${timeString}</div>
-            `;
-            break;
-            
-        case 'phone':
-            const phone = extractPhoneNumber(message.content);
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="special-message phone">
-                        <div class="special-label">Telefon Numarası</div>
-                        <div class="special-value">${phone}</div>
-                    </div>
-                    ${message.content !== phone ? `<div style="margin-top: 8px;">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                <div class="message-time">${timeString}</div>
-            `;
-            break;
-            
-        case 'email':
-            const email = extractEmail(message.content);
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="special-message email">
-                        <div class="special-label">E-posta</div>
-                        <div class="special-value">${email}</div>
-                    </div>
-                    ${message.content !== email ? `<div style="margin-top: 8px;">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                <div class="message-time">${timeString}</div>
-            `;
-            break;
-            
-        case 'website':
-            const website = extractWebsite(message.content);
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="special-message website">
-                        <div class="special-label">Website</div>
-                        <div class="special-value">
-                            <a href="${website}" target="_blank" style="color: inherit;">${website}</a>
-                        </div>
-                    </div>
-                    ${message.content !== website ? `<div style="margin-top: 8px;">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                <div class="message-time">${timeString}</div>
-            `;
-            break;
+
             
         case 'missed_call':
             messageDiv.innerHTML = `
@@ -488,56 +352,7 @@ function createMessageElement(message) {
     return messageDiv;
 }
 
-// Extract IBAN from content
-function extractIBAN(content) {
-    const ibanPattern = /TR\d{2}\s*\d{4}\s*\d{4}\s*\d{4}\s*\d{4}\s*\d{2}/i;
-    const match = content.match(ibanPattern);
-    return match ? match[0].replace(/\s/g, ' ') : content;
-}
 
-// Extract TC Kimlik No from content
-function extractTCKimlikNo(content) {
-    const tcPattern = /\b\d{11}\b/;
-    const match = content.match(tcPattern);
-    return match ? match[0] : content;
-}
-
-// Extract phone number from content
-function extractPhoneNumber(content) {
-    const phonePatterns = [
-        /\b\d{3}\s*\d{3}\s*\d{2}\s*\d{2}\b/,
-        /\b\d{3}\s*\d{3}\s*\d{4}\b/,
-        /\+90\s*\d{3}\s*\d{3}\s*\d{2}\s*\d{2}/,
-        /\b0\d{3}\s*\d{3}\s*\d{2}\s*\d{2}\b/
-    ];
-    
-    for (let pattern of phonePatterns) {
-        const match = content.match(pattern);
-        if (match) return match[0];
-    }
-    return content;
-}
-
-// Extract email from content
-function extractEmail(content) {
-    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
-    const match = content.match(emailPattern);
-    return match ? match[0] : content;
-}
-
-// Extract website from content
-function extractWebsite(content) {
-    const websitePattern = /\b(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+(?:\/[^\s]*)?\b/;
-    const match = content.match(websitePattern);
-    if (match && !match[0].includes('maps.google.com')) {
-        let url = match[0];
-        if (!url.startsWith('http')) {
-            url = 'https://' + url;
-        }
-        return url;
-    }
-    return content;
-}
 
 // Process image files and create virtual URLs
 function processImageFiles(imageFiles) {

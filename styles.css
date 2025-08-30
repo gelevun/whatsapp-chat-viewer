@@ -233,59 +233,7 @@ body {
     color: #333;
 }
 
-/* Special Message Types */
-.special-message {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    padding: 12px;
-    margin: 8px 0;
-}
 
-.special-message.iban {
-    background: #e3f2fd;
-    border-color: #2196f3;
-}
-
-.special-message.tc {
-    background: #fff3e0;
-    border-color: #ff9800;
-}
-
-.special-message.bank {
-    background: #e8f5e8;
-    border-color: #4caf50;
-}
-
-.special-message.phone {
-    background: #fce4ec;
-    border-color: #e91e63;
-}
-
-.special-message.email {
-    background: #f3e5f5;
-    border-color: #9c27b0;
-}
-
-.special-message.website {
-    background: #e0f2f1;
-    border-color: #009688;
-}
-
-.special-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-    opacity: 0.7;
-}
-
-.special-value {
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    font-weight: 600;
-    word-break: break-all;
-}
 
 /* File Upload */
 .file-upload {
