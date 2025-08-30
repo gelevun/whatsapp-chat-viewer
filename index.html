@@ -57,6 +57,11 @@
         </div>
     </div>
 
+    <!-- Fast Scroll Indicator -->
+    <div class="scroll-indicator" id="scrollIndicator">
+        <i class="fas fa-chevron-up"></i> Hızlı Kaydırma <i class="fas fa-chevron-down"></i>
+    </div>
+
     <script>
         // Basit çalışan versiyon
         let chatData = [];
@@ -95,6 +100,89 @@
                     // Handle scroll events here if needed
                 }, 16); // ~60fps
             }, { passive: true });
+            
+            // Fast scroll functionality
+            setupFastScroll();
+        });
+        
+        // Setup fast scroll functionality
+        function setupFastScroll() {
+            const scrollIndicator = document.getElementById('scrollIndicator');
+            let isFastScrollActive = false;
+            
+            // Keyboard shortcuts for fast scroll
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Shift') {
+                    activateFastScroll();
+                }
+                
+                // Page Up/Down for fast scroll
+                if (e.key === 'PageUp') {
+                    e.preventDefault();
+                    chatMessages.scrollTop -= chatMessages.clientHeight;
+                }
+                
+                if (e.key === 'PageDown') {
+                    e.preventDefault();
+                    chatMessages.scrollTop += chatMessages.clientHeight;
+                }
+                
+                // Home/End for quick navigation
+                if (e.key === 'Home') {
+                    e.preventDefault();
+                    chatMessages.scrollTop = 0;
+                }
+                
+                if (e.key === 'End') {
+                    e.preventDefault();
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                if (e.key === 'Shift') {
+                    deactivateFastScroll();
+                }
+            });
+            
+            // Mouse wheel for fast scroll
+            chatMessages.addEventListener('wheel', function(e) {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    // Fast scroll with mouse wheel
+                    const scrollAmount = e.deltaY * 3; // 3x faster
+                    chatMessages.scrollTop += scrollAmount;
+                    showScrollIndicator();
+                }
+            }, { passive: false });
+            
+            function activateFastScroll() {
+                if (!isFastScrollActive) {
+                    isFastScrollActive = true;
+                    chatMessages.classList.add('fast-scroll');
+                    showScrollIndicator();
+                }
+            }
+            
+            function deactivateFastScroll() {
+                if (isFastScrollActive) {
+                    isFastScrollActive = false;
+                    chatMessages.classList.remove('fast-scroll');
+                    hideScrollIndicator();
+                }
+            }
+            
+            function showScrollIndicator() {
+                scrollIndicator.classList.add('show');
+                setTimeout(() => {
+                    scrollIndicator.classList.remove('show');
+                }, 2000);
+            }
+            
+            function hideScrollIndicator() {
+                scrollIndicator.classList.remove('show');
+            }
+        }
         });
 
         // Load default chat from _chat.txt
@@ -273,6 +361,9 @@
             
             const timeString = formatTime(message.timestamp);
             
+            // Add fast scroll to message content if it's long
+            const isLongMessage = message.content.length > 200 || message.content.includes('\n');
+            
             switch (message.type) {
                 case 'image':
                     const imagePath = getMediaPath(message.content);
@@ -351,8 +442,9 @@
                     break;
                     
                 default:
+                    const contentClass = isLongMessage ? 'message-content fast-scroll' : 'message-content';
                     messageDiv.innerHTML = `
-                        <div class="message-content">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>
+                        <div class="${contentClass}">${escapeHtml(message.content).replace(/\n/g, '<br>')}</div>
                         <div class="message-time">${timeString}</div>
                     `;
             }
