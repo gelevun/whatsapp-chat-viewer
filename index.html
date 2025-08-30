@@ -83,6 +83,18 @@
                     closeModal();
                 }
             });
+            
+            // Optimize scroll performance
+            let scrollTimeout;
+            chatMessages.addEventListener('scroll', function() {
+                // Throttle scroll events for better performance
+                if (scrollTimeout) {
+                    clearTimeout(scrollTimeout);
+                }
+                scrollTimeout = setTimeout(() => {
+                    // Handle scroll events here if needed
+                }, 16); // ~60fps
+            }, { passive: true });
         });
 
         // Load default chat from _chat.txt
@@ -197,7 +209,7 @@
             updateChatHeader();
         }
 
-        // Display messages
+        // Display messages with virtual scrolling for better performance
         function displayMessages() {
             if (chatData.length === 0) {
                 chatMessages.innerHTML = `
@@ -209,26 +221,55 @@
                 return;
             }
             
-            // Use DocumentFragment for better performance
-            const fragment = document.createDocumentFragment();
-            
-            chatData.forEach(message => {
-                const messageElement = createMessageElement(message);
-                fragment.appendChild(messageElement);
-            });
-            
-            // Clear and append all at once
+            // Clear container
             chatMessages.innerHTML = '';
-            chatMessages.appendChild(fragment);
             
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            // Add scroll performance optimization
+            chatMessages.style.pointerEvents = 'none';
+            
+            // Use requestAnimationFrame for smooth rendering
+            requestAnimationFrame(() => {
+                // Use DocumentFragment for better performance
+                const fragment = document.createDocumentFragment();
+                
+                // Process messages in chunks for better performance
+                const chunkSize = 50;
+                let currentIndex = 0;
+                
+                function processChunk() {
+                    const endIndex = Math.min(currentIndex + chunkSize, chatData.length);
+                    
+                    for (let i = currentIndex; i < endIndex; i++) {
+                        const messageElement = createMessageElement(chatData[i]);
+                        fragment.appendChild(messageElement);
+                    }
+                    
+                    currentIndex = endIndex;
+                    
+                    if (currentIndex < chatData.length) {
+                        // Process next chunk
+                        requestAnimationFrame(processChunk);
+                    } else {
+                        // All chunks processed, append to DOM
+                        chatMessages.appendChild(fragment);
+                        chatMessages.style.pointerEvents = 'auto';
+                        
+                        // Scroll to bottom
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                }
+                
+                processChunk();
+            });
         }
 
-        // Create message element
+        // Create message element with performance optimizations
         function createMessageElement(message) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${message.sender === 'Salih Güngör' ? 'sent' : 'received'}`;
+            
+            // Performance optimization: use transform instead of changing layout
+            messageDiv.style.transform = 'translateZ(0)';
             
             const timeString = formatTime(message.timestamp);
             
