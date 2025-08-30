@@ -71,7 +71,7 @@ function handleFileUpload(event) {
             chatFile = file;
             console.log('Found chat file:', file.name);
         } else if (file.type.startsWith('image/') || file.type.startsWith('video/') || 
-                   file.name.match(/\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar)$/i)) {
+                   file.name.match(/\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar|vcf)$/i)) {
             imageFiles.push(file);
             console.log('Found media file:', file.name);
         } else {
@@ -115,18 +115,22 @@ function parseChatFile(text) {
     chatParticipants.clear();
     
     let currentMessage = null;
+    const messageRegex = /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2})\]\s+(.+?):\s*(.*)/;
+    
+    // Pre-allocate array for better performance
+    const messages = [];
     
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
         
         // Check if this line starts a new message
-        const messageMatch = line.match(/^\[(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2})\]\s+(.+?):\s*(.*)/);
+        const messageMatch = line.match(messageRegex);
         
         if (messageMatch) {
             // Save previous message if exists
             if (currentMessage) {
-                chatData.push(currentMessage);
+                messages.push(currentMessage);
             }
             
             // Start new message
@@ -152,11 +156,11 @@ function parseChatFile(text) {
     
     // Add the last message
     if (currentMessage) {
-        chatData.push(currentMessage);
+        messages.push(currentMessage);
     }
     
     // Sort messages by timestamp
-    chatData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    chatData = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
     // Update header with participants
     updateChatHeader();
@@ -212,6 +216,8 @@ function getMessageType(content) {
         return 'document';
     } else if (content.includes('<') && content.includes('.rar eklendi>')) {
         return 'document';
+    } else if (content.includes('<') && content.includes('.vcf eklendi>')) {
+        return 'contact';
     } else if (content.includes('Konum: https://maps.google.com')) {
         return 'location';
     } else if (content.includes('Cevapsız görüntülü arama')) {
@@ -227,8 +233,6 @@ function getMessageType(content) {
 
 // Display messages
 function displayMessages() {
-    chatMessages.innerHTML = '';
-    
     if (chatData.length === 0) {
         chatMessages.innerHTML = `
             <div class="loading">
@@ -239,10 +243,17 @@ function displayMessages() {
         return;
     }
     
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
+    
     chatData.forEach(message => {
         const messageElement = createMessageElement(message);
-        chatMessages.appendChild(messageElement);
+        fragment.appendChild(messageElement);
     });
+    
+    // Clear and append all at once
+    chatMessages.innerHTML = '';
+    chatMessages.appendChild(fragment);
     
     // Scroll to bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -298,6 +309,19 @@ function createMessageElement(message) {
                     <div class="media-message document">
                         <i class="fas fa-file"></i>
                         <span>Dosya</span>
+                        <div class="file-name">${getMediaPath(message.content)}</div>
+                    </div>
+                </div>
+                <div class="message-time">${timeString}</div>
+            `;
+            break;
+            
+        case 'contact':
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="media-message contact">
+                        <i class="fas fa-address-card"></i>
+                        <span>Kişi kartı</span>
                         <div class="file-name">${getMediaPath(message.content)}</div>
                     </div>
                 </div>
@@ -372,7 +396,7 @@ function processImageFiles(imageFiles) {
 
 // Get media path from content
 function getMediaPath(content) {
-    const match = content.match(/<(.+\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar))\s+eklendi>/i);
+    const match = content.match(/<(.+\.(jpg|jpeg|png|gif|mp4|avi|mov|pdf|doc|docx|txt|zip|rar|vcf))\s+eklendi>/i);
     if (match) {
         const fileName = match[1];
         console.log('Looking for image:', fileName);
