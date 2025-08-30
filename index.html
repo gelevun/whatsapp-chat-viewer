@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Sohbet Görüntüleyici</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="chat-info">
+                <div class="avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="chat-details">
+                    <h3>Orhan İlhan</h3>
+                    <span class="status">WhatsApp sohbeti</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="action-btn" onclick="exportChat()">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be loaded here -->
+        </div>
+
+        <!-- File Upload -->
+        <div class="file-upload">
+            <input type="file" id="chatFile" accept=".txt,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov,.pdf,.doc,.docx,.zip,.rar" style="display: none;" multiple>
+            <button class="upload-btn" onclick="document.getElementById('chatFile').click()">
+                <i class="fas fa-upload"></i>
+                Sohbet Dosyalarını Yükle
+            </button>
+            <span class="upload-hint">_chat.txt ve medya dosyalarını seçin (birden fazla dosya seçebilirsiniz)</span>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <img id="modalImage" src="" alt="Resim">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
