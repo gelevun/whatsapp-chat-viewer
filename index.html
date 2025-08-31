@@ -207,6 +207,14 @@
             
             console.log('Uploading', files.length, 'files...');
             
+            // Show loading state
+            chatMessages.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Dosyalar yükleniyor...</p>
+                </div>
+            `;
+            
             let chatFile = null;
             const imageFiles = [];
             
@@ -236,65 +244,111 @@
             if (chatFile) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    parseChatFile(e.target.result);
-                    displayMessages();
+                    try {
+                        console.log('Chat file loaded, parsing...');
+                        parseChatFile(e.target.result);
+                        displayMessages();
+                        console.log('Chat loaded successfully!');
+                    } catch (error) {
+                        console.error('Error parsing chat file:', error);
+                        chatMessages.innerHTML = `
+                            <div class="loading">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>Dosya okuma hatası: ${error.message}</p>
+                            </div>
+                        `;
+                    }
+                };
+                reader.onerror = function(error) {
+                    console.error('File reading error:', error);
+                    chatMessages.innerHTML = `
+                        <div class="loading">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Dosya okuma hatası!</p>
+                        </div>
+                    `;
                 };
                 reader.readAsText(chatFile);
+            } else {
+                console.log('No chat file found');
+                chatMessages.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Chat dosyası bulunamadı! Lütfen _chat.txt dosyasını seçin.</p>
+                    </div>
+                `;
             }
         }
 
         // Parse WhatsApp chat file
         function parseChatFile(text) {
-            const lines = text.split('\n');
-            chatData = [];
-            chatParticipants.clear();
-            
-            let currentMessage = null;
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+            try {
+                console.log('Parsing chat file...');
+                const lines = text.split('\n');
+                chatData = [];
+                chatParticipants.clear();
                 
-                // Check if this line starts a new message
-                const messageMatch = line.match(/^\[(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2})\]\s+(.+?):\s*(.*)/);
+                let currentMessage = null;
+                let messageCount = 0;
                 
-                if (messageMatch) {
-                    // Save previous message if exists
-                    if (currentMessage) {
-                        chatData.push(currentMessage);
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    // Check if this line starts a new message
+                    const messageMatch = line.match(/^\[(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2})\]\s+(.+?):\s*(.*)/);
+                    
+                    if (messageMatch) {
+                        // Save previous message if exists
+                        if (currentMessage) {
+                            chatData.push(currentMessage);
+                            messageCount++;
+                        }
+                        
+                        // Start new message
+                        const [, timestamp, sender, content] = messageMatch;
+                        const senderName = sender.trim();
+                        
+                        // Add sender to participants
+                        chatParticipants.add(senderName);
+                        
+                        currentMessage = {
+                            timestamp: parseTimestamp(timestamp),
+                            sender: senderName,
+                            content: content.trim(),
+                            type: getMessageType(content)
+                        };
+                    } else if (currentMessage) {
+                        // This line is continuation of current message
+                        currentMessage.content += '\n' + line;
+                        // Update message type based on new content
+                        currentMessage.type = getMessageType(currentMessage.content);
                     }
-                    
-                    // Start new message
-                    const [, timestamp, sender, content] = messageMatch;
-                    const senderName = sender.trim();
-                    
-                    // Add sender to participants
-                    chatParticipants.add(senderName);
-                    
-                    currentMessage = {
-                        timestamp: parseTimestamp(timestamp),
-                        sender: senderName,
-                        content: content.trim(),
-                        type: getMessageType(content)
-                    };
-                } else if (currentMessage) {
-                    // This line is continuation of current message
-                    currentMessage.content += '\n' + line;
-                    // Update message type based on new content
-                    currentMessage.type = getMessageType(currentMessage.content);
                 }
+                
+                // Add the last message
+                if (currentMessage) {
+                    chatData.push(currentMessage);
+                    messageCount++;
+                }
+                
+                console.log(`Parsed ${messageCount} messages from ${chatParticipants.size} participants`);
+                
+                if (chatData.length === 0) {
+                    throw new Error('Hiç mesaj bulunamadı. Dosya formatını kontrol edin.');
+                }
+                
+                // Sort messages by timestamp
+                chatData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                // Update header with participants
+                updateChatHeader();
+                
+                console.log('Chat parsing completed successfully!');
+            } catch (error) {
+                console.error('Error in parseChatFile:', error);
+                throw error;
             }
-            
-            // Add the last message
-            if (currentMessage) {
-                chatData.push(currentMessage);
-            }
-            
-            // Sort messages by timestamp
-            chatData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            // Update header with participants
-            updateChatHeader();
         }
 
         // Display messages with virtual scrolling for better performance
@@ -545,14 +599,34 @@
 
         // Parse timestamp
         function parseTimestamp(timestamp) {
-            const [datePart, timePart] = timestamp.split(' ');
-            const [day, month, year] = datePart.split('/');
-            const [hour, minute, second] = timePart.split(':');
-            
-            // Handle 2-digit year
-            const fullYear = year.length === 2 ? '20' + year : year;
-            
-            return new Date(fullYear, month - 1, day, hour, minute, second);
+            try {
+                const [datePart, timePart] = timestamp.split(' ');
+                if (!datePart || !timePart) {
+                    throw new Error('Geçersiz tarih formatı');
+                }
+                
+                const [day, month, year] = datePart.split('/');
+                const [hour, minute, second] = timePart.split(':');
+                
+                if (!day || !month || !year || !hour || !minute || !second) {
+                    throw new Error('Eksik tarih/saat bilgisi');
+                }
+                
+                // Handle 2-digit year
+                const fullYear = year.length === 2 ? '20' + year : year;
+                
+                const date = new Date(fullYear, month - 1, day, hour, minute, second);
+                
+                if (isNaN(date.getTime())) {
+                    throw new Error('Geçersiz tarih değeri');
+                }
+                
+                return date;
+            } catch (error) {
+                console.error('Timestamp parsing error:', error, 'for timestamp:', timestamp);
+                // Return current date as fallback
+                return new Date();
+            }
         }
 
         // Format time

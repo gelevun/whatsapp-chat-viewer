@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dosya Yükleme Testi</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-area { border: 1px solid #ccc; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .result { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Dosya Yükleme Testi</h1>
+    
+    <div class="test-area">
+        <h3>1. Basit Dosya Yükleme</h3>
+        <input type="file" id="simpleFile" accept=".txt">
+        <button onclick="testSimpleUpload()">Test Et</button>
+        <div id="simpleResult" class="result"></div>
+    </div>
+    
+    <div class="test-area">
+        <h3>2. Chat Dosyası Yükleme</h3>
+        <input type="file" id="chatFile" accept=".txt">
+        <button onclick="testChatUpload()">Test Et</button>
+        <div id="chatResult" class="result"></div>
+    </div>
+    
+    <div class="test-area">
+        <h3>3. Çoklu Dosya Yükleme</h3>
+        <input type="file" id="multipleFiles" accept=".txt,.jpg,.png" multiple>
+        <button onclick="testMultipleUpload()">Test Et</button>
+        <div id="multipleResult" class="result"></div>
+    </div>
+    
+    <div class="test-area">
+        <h3>4. Dosya İçeriği Görüntüleme</h3>
+        <input type="file" id="contentFile" accept=".txt">
+        <button onclick="testContentDisplay()">Test Et</button>
+        <div id="contentResult" class="result"></div>
+    </div>
+    
+    <script>
+        function testSimpleUpload() {
+            const fileInput = document.getElementById('simpleFile');
+            const result = document.getElementById('simpleResult');
+            
+            if (fileInput.files.length === 0) {
+                result.innerHTML = '<div class="error">Lütfen bir dosya seçin</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            result.innerHTML = `
+                <div class="success">
+                    <strong>Dosya yüklendi:</strong><br>
+                    İsim: ${file.name}<br>
+                    Boyut: ${file.size} bytes<br>
+                    Tür: ${file.type}<br>
+                    Son değişiklik: ${new Date(file.lastModified).toLocaleString('tr-TR')}
+                </div>
+            `;
+        }
+        
+        function testChatUpload() {
+            const fileInput = document.getElementById('chatFile');
+            const result = document.getElementById('chatResult');
+            
+            if (fileInput.files.length === 0) {
+                result.innerHTML = '<div class="error">Lütfen bir dosya seçin</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const lines = content.split('\n');
+                const messageCount = lines.filter(line => 
+                    line.match(/^\[\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2}\]\s+.+?:\s*/)
+                ).length;
+                
+                result.innerHTML = `
+                    <div class="success">
+                        <strong>Chat dosyası analiz edildi:</strong><br>
+                        Dosya: ${file.name}<br>
+                        Toplam satır: ${lines.length}<br>
+                        Mesaj sayısı: ${messageCount}<br>
+                        İlk 100 karakter: ${content.substring(0, 100)}...
+                    </div>
+                `;
+            };
+            
+            reader.onerror = function() {
+                result.innerHTML = '<div class="error">Dosya okuma hatası!</div>';
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        function testMultipleUpload() {
+            const fileInput = document.getElementById('multipleFiles');
+            const result = document.getElementById('multipleResult');
+            
+            if (fileInput.files.length === 0) {
+                result.innerHTML = '<div class="error">Lütfen dosyalar seçin</div>';
+                return;
+            }
+            
+            const files = Array.from(fileInput.files);
+            let html = '<div class="success"><strong>Yüklenen dosyalar:</strong><br>';
+            
+            files.forEach((file, index) => {
+                html += `${index + 1}. ${file.name} (${file.size} bytes, ${file.type})<br>`;
+            });
+            
+            html += '</div>';
+            result.innerHTML = html;
+        }
+        
+        function testContentDisplay() {
+            const fileInput = document.getElementById('contentFile');
+            const result = document.getElementById('contentResult');
+            
+            if (fileInput.files.length === 0) {
+                result.innerHTML = '<div class="error">Lütfen bir dosya seçin</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                result.innerHTML = `
+                    <div class="info">
+                        <strong>Dosya içeriği (ilk 500 karakter):</strong><br>
+                        <pre style="background: white; padding: 10px; border-radius: 4px; overflow-x: auto;">${content.substring(0, 500)}${content.length > 500 ? '...' : ''}</pre>
+                    </div>
+                `;
+            };
+            
+            reader.onerror = function() {
+                result.innerHTML = '<div class="error">Dosya okuma hatası!</div>';
+            };
+            
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
