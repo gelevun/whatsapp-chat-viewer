@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Çalışan WhatsApp Chat Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: #25d366;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .chat-area {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #e5ddd5;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        
+        .message.sent {
+            background: #dcf8c6;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.received {
+            background: white;
+            border: 1px solid #ddd;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            color: #25d366;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .message-content {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .controls {
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+        }
+        
+        .btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            background: #128c7e;
+        }
+        
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .media-message {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 5px 0;
+            text-align: center;
+        }
+        
+        .media-message i {
+            font-size: 24px;
+            color: #25d366;
+            margin-bottom: 5px;
+        }
+        
+        .location-message {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        
+        .location-message:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WhatsApp Chat Viewer</h1>
+            <p>Çalışan Versiyon</p>
+        </div>
+        
+        <div class="chat-area" id="chatArea">
+            <div style="text-align: center; color: #666; margin-top: 50px;">
+                <p>Henüz mesaj yok.</p>
+                <p>Varsayılan chat yükleniyor...</p>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="loadDefaultChat()">🔄 Varsayılan Chat Yükle</button>
+            <button class="btn" onclick="clearChat()">🗑️ Temizle</button>
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+    
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const status = document.getElementById('status');
+        
+        function showStatus(message, type = 'loading') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+        
+        function clearChat() {
+            chatArea.innerHTML = `
+                <div style="text-align: center; color: #666; margin-top: 50px;">
+                    <p>Henüz mesaj yok.</p>
+                    <p>Varsayılan chat yükleniyor...</p>
+                </div>
+            `;
+            showStatus('Chat temizlendi', 'success');
+        }
+        
+        function loadDefaultChat() {
+            showStatus('Varsayılan chat yükleniyor...', 'loading');
+            
+            fetch('_chat.txt')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Dosya bulunamadı');
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    const messages = parseChat(content);
+                    
+                    if (messages.length === 0) {
+                        showStatus('Varsayılan chat dosyasında mesaj bulunamadı!', 'error');
+                        return;
+                    }
+                    
+                    displayMessages(messages);
+                    showStatus(`Varsayılan chat yüklendi: ${messages.length} mesaj`, 'success');
+                })
+                .catch(error => {
+                    console.error('Error loading default chat:', error);
+                    showStatus('Varsayılan chat yüklenemedi: ' + error.message, 'error');
+                });
+        }
+        
+        function parseChat(content) {
+            const lines = content.split('\n');
+            const messages = [];
+            let currentMessage = null;
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                // Check if this is a new message
+                const match = line.match(/^\[(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}:\d{2})\]\s+(.+?):\s*(.*)/);
+                
+                if (match) {
+                    // Save previous message
+                    if (currentMessage) {
+                        messages.push(currentMessage);
+                    }
+                    
+                    // Start new message
+                    const [, timestamp, sender, content] = match;
+                    currentMessage = {
+                        timestamp: timestamp,
+                        sender: sender.trim(),
+                        content: content.trim(),
+                        type: getMessageType(content)
+                    };
+                } else if (currentMessage) {
+                    // Continue previous message
+                    currentMessage.content += '\n' + line;
+                    // Update message type
+                    currentMessage.type = getMessageType(currentMessage.content);
+                }
+            }
+            
+            // Add last message
+            if (currentMessage) {
+                messages.push(currentMessage);
+            }
+            
+            return messages;
+        }
+        
+        function getMessageType(content) {
+            if (content.includes('<') && content.includes('.jpg eklendi>')) {
+                return 'image';
+            } else if (content.includes('<') && content.includes('.mp4 eklendi>')) {
+                return 'video';
+            } else if (content.includes('<') && content.includes('.mp3 eklendi>')) {
+                return 'audio';
+            } else if (content.includes('<') && content.includes('.m4a eklendi>')) {
+                return 'audio';
+            } else if (content.includes('<') && content.includes('.pdf eklendi>')) {
+                return 'document';
+            } else if (content.includes('Konum: https://maps.google.com')) {
+                return 'location';
+            } else if (content.includes('Cevapsız görüntülü arama')) {
+                return 'call';
+            } else {
+                return 'text';
+            }
+        }
+        
+        function displayMessages(messages) {
+            chatArea.innerHTML = '';
+            
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.sender === 'Salih Güngör' ? 'sent' : 'received'}`;
+                
+                let contentHtml = '';
+                
+                switch (message.type) {
+                    case 'image':
+                        contentHtml = `
+                            <div class="media-message">
+                                <i>📷</i>
+                                <div>Resim</div>
+                                <div style="font-size: 12px; color: #666;">${message.content}</div>
+                            </div>
+                        `;
+                        break;
+                    case 'video':
+                        contentHtml = `
+                            <div class="media-message">
+                                <i>🎥</i>
+                                <div>Video</div>
+                                <div style="font-size: 12px; color: #666;">${message.content}</div>
+                            </div>
+                        `;
+                        break;
+                    case 'audio':
+                        contentHtml = `
+                            <div class="media-message">
+                                <i>🎵</i>
+                                <div>Ses</div>
+                                <div style="font-size: 12px; color: #666;">${message.content}</div>
+                            </div>
+                        `;
+                        break;
+                    case 'document':
+                        contentHtml = `
+                            <div class="media-message">
+                                <i>📄</i>
+                                <div>Belge</div>
+                                <div style="font-size: 12px; color: #666;">${message.content}</div>
+                            </div>
+                        `;
+                        break;
+                    case 'location':
+                        contentHtml = `
+                            <div class="location-message" onclick="openLocation('${message.content.split('Konum: ')[1]}')">
+                                <i>📍</i>
+                                <div>Konum paylaşıldı</div>
+                                <div style="font-size: 12px; color: #666;">Tıklayın</div>
+                            </div>
+                        `;
+                        break;
+                    case 'call':
+                        contentHtml = `
+                            <div class="media-message">
+                                <i>📞</i>
+                                <div>Görüntülü arama</div>
+                                <div style="font-size: 12px; color: #666;">Cevapsız</div>
+                            </div>
+                        `;
+                        break;
+                    default:
+                        contentHtml = `<div class="message-content">${message.content.replace(/\n/g, '<br>')}</div>`;
+                }
+                
+                messageDiv.innerHTML = `
+                    <div class="message-sender">${message.sender}</div>
+                    ${contentHtml}
+                    <div class="message-time">${message.timestamp}</div>
+                `;
+                
+                chatArea.appendChild(messageDiv);
+            });
+            
+            // Scroll to bottom
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        function openLocation(url) {
+            window.open(url, '_blank');
+        }
+        
+        // Auto-load default chat on page load
+        window.addEventListener('load', function() {
+            setTimeout(loadDefaultChat, 1000);
+        });
+    </script>
+</body>
+</html>
