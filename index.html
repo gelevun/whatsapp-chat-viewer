@@ -45,6 +45,10 @@
                 <i class="fas fa-upload"></i>
                 Sohbet Dosyalarını Yükle
             </button>
+            <button class="upload-btn" onclick="loadDefaultChat()" style="background: #007bff;">
+                <i class="fas fa-refresh"></i>
+                Varsayılan Chat Yükle
+            </button>
             <span class="upload-hint">_chat.txt ve medya dosyalarını seçin (birden fazla dosya seçebilirsiniz)</span>
         </div>
     </div>
@@ -89,113 +93,26 @@
                 }
             });
             
-            // Optimize scroll performance
-            let scrollTimeout;
-            chatMessages.addEventListener('scroll', function() {
-                // Throttle scroll events for better performance
-                if (scrollTimeout) {
-                    clearTimeout(scrollTimeout);
-                }
-                scrollTimeout = setTimeout(() => {
-                    // Handle scroll events here if needed
-                }, 16); // ~60fps
-            }, { passive: true });
-            
             // Fast scroll functionality
             setupFastScroll();
-        });
-        
-        // Setup fast scroll functionality
-        function setupFastScroll() {
-            const scrollIndicator = document.getElementById('scrollIndicator');
-            let isFastScrollActive = false;
-            
-            // Keyboard shortcuts for fast scroll
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Shift') {
-                    activateFastScroll();
-                }
-                
-                // Page Up/Down for fast scroll
-                if (e.key === 'PageUp') {
-                    e.preventDefault();
-                    chatMessages.scrollTop -= chatMessages.clientHeight;
-                }
-                
-                if (e.key === 'PageDown') {
-                    e.preventDefault();
-                    chatMessages.scrollTop += chatMessages.clientHeight;
-                }
-                
-                // Home/End for quick navigation
-                if (e.key === 'Home') {
-                    e.preventDefault();
-                    chatMessages.scrollTop = 0;
-                }
-                
-                if (e.key === 'End') {
-                    e.preventDefault();
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            });
-            
-            document.addEventListener('keyup', function(e) {
-                if (e.key === 'Shift') {
-                    deactivateFastScroll();
-                }
-            });
-            
-            // Mouse wheel for fast scroll
-            chatMessages.addEventListener('wheel', function(e) {
-                if (e.shiftKey) {
-                    e.preventDefault();
-                    // Fast scroll with mouse wheel
-                    const scrollAmount = e.deltaY * 3; // 3x faster
-                    chatMessages.scrollTop += scrollAmount;
-                    showScrollIndicator();
-                }
-            }, { passive: false });
-            
-            function activateFastScroll() {
-                if (!isFastScrollActive) {
-                    isFastScrollActive = true;
-                    chatMessages.classList.add('fast-scroll');
-                    showScrollIndicator();
-                }
-            }
-            
-            function deactivateFastScroll() {
-                if (isFastScrollActive) {
-                    isFastScrollActive = false;
-                    chatMessages.classList.remove('fast-scroll');
-                    hideScrollIndicator();
-                }
-            }
-            
-            function showScrollIndicator() {
-                scrollIndicator.classList.add('show');
-                setTimeout(() => {
-                    scrollIndicator.classList.remove('show');
-                }, 2000);
-            }
-            
-            function hideScrollIndicator() {
-                scrollIndicator.classList.remove('show');
-            }
-        }
         });
 
         // Load default chat from _chat.txt
         async function loadDefaultChat() {
             try {
+                showLoading('Varsayılan chat yükleniyor...');
                 const response = await fetch('_chat.txt');
                 if (response.ok) {
                     const text = await response.text();
                     parseChatFile(text);
                     displayMessages();
+                    showSuccess('Varsayılan chat yüklendi!');
+                } else {
+                    showError('Varsayılan chat dosyası bulunamadı');
                 }
             } catch (error) {
                 console.log('Default chat file not found, waiting for user upload');
+                showError('Varsayılan chat yüklenemedi: ' + error.message);
             }
         }
 
@@ -206,14 +123,7 @@
             if (files.length === 0) return;
             
             console.log('Uploading', files.length, 'files...');
-            
-            // Show loading state
-            chatMessages.innerHTML = `
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Dosyalar yükleniyor...</p>
-                </div>
-            `;
+            showLoading('Dosyalar yükleniyor...');
             
             let chatFile = null;
             const imageFiles = [];
@@ -248,35 +158,21 @@
                         console.log('Chat file loaded, parsing...');
                         parseChatFile(e.target.result);
                         displayMessages();
+                        showSuccess('Chat dosyası yüklendi!');
                         console.log('Chat loaded successfully!');
                     } catch (error) {
                         console.error('Error parsing chat file:', error);
-                        chatMessages.innerHTML = `
-                            <div class="loading">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <p>Dosya okuma hatası: ${error.message}</p>
-                            </div>
-                        `;
+                        showError('Dosya okuma hatası: ' + error.message);
                     }
                 };
                 reader.onerror = function(error) {
                     console.error('File reading error:', error);
-                    chatMessages.innerHTML = `
-                        <div class="loading">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>Dosya okuma hatası!</p>
-                        </div>
-                    `;
+                    showError('Dosya okuma hatası!');
                 };
                 reader.readAsText(chatFile);
             } else {
                 console.log('No chat file found');
-                chatMessages.innerHTML = `
-                    <div class="loading">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Chat dosyası bulunamadı! Lütfen _chat.txt dosyasını seçin.</p>
-                    </div>
-                `;
+                showError('Chat dosyası bulunamadı! Lütfen _chat.txt dosyasını seçin.');
             }
         }
 
@@ -713,6 +609,117 @@
                     }
                 }
             }
+        }
+
+        // Setup fast scroll functionality
+        function setupFastScroll() {
+            const scrollIndicator = document.getElementById('scrollIndicator');
+            let isFastScrollActive = false;
+            
+            // Keyboard shortcuts for fast scroll
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Shift') {
+                    activateFastScroll();
+                }
+                
+                // Page Up/Down for fast scroll
+                if (e.key === 'PageUp') {
+                    e.preventDefault();
+                    chatMessages.scrollTop -= chatMessages.clientHeight;
+                }
+                
+                if (e.key === 'PageDown') {
+                    e.preventDefault();
+                    chatMessages.scrollTop += chatMessages.clientHeight;
+                }
+                
+                // Home/End for quick navigation
+                if (e.key === 'Home') {
+                    e.preventDefault();
+                    chatMessages.scrollTop = 0;
+                }
+                
+                if (e.key === 'End') {
+                    e.preventDefault();
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                if (e.key === 'Shift') {
+                    deactivateFastScroll();
+                }
+            });
+            
+            // Mouse wheel for fast scroll
+            chatMessages.addEventListener('wheel', function(e) {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    // Fast scroll with mouse wheel
+                    const scrollAmount = e.deltaY * 3; // 3x faster
+                    chatMessages.scrollTop += scrollAmount;
+                    showScrollIndicator();
+                }
+            }, { passive: false });
+            
+            function activateFastScroll() {
+                if (!isFastScrollActive) {
+                    isFastScrollActive = true;
+                    chatMessages.classList.add('fast-scroll');
+                    showScrollIndicator();
+                }
+            }
+            
+            function deactivateFastScroll() {
+                if (isFastScrollActive) {
+                    isFastScrollActive = false;
+                    chatMessages.classList.remove('fast-scroll');
+                    hideScrollIndicator();
+                }
+            }
+            
+            function showScrollIndicator() {
+                scrollIndicator.classList.add('show');
+                setTimeout(() => {
+                    scrollIndicator.classList.remove('show');
+                }, 2000);
+            }
+            
+            function hideScrollIndicator() {
+                scrollIndicator.classList.remove('show');
+            }
+        }
+
+        // Status functions
+        function showLoading(message) {
+            chatMessages.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function showSuccess(message) {
+            setTimeout(() => {
+                const loadingDiv = chatMessages.querySelector('.loading');
+                if (loadingDiv) {
+                    loadingDiv.innerHTML = `
+                        <i class="fas fa-check-circle"></i>
+                        <p>${message}</p>
+                    `;
+                    loadingDiv.style.color = '#2e7d32';
+                }
+            }, 1000);
+        }
+
+        function showError(message) {
+            chatMessages.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>${message}</p>
+                </div>
+            `;
         }
     </script>
 </body>
